@@ -1,4 +1,4 @@
-present1 = False
-present2 = "A box full of triangles"
-present3 = 64
-present4 = 8.5
+present1 = "A box full of triangles"
+present2 = True
+present3 = 20
+present4 = 12.5
