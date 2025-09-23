@@ -18,13 +18,11 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import gspread
-from google.oauth2.service_account import Credentials
 
 # --------------------------
 # Config / Secrets contract
 # --------------------------
 # Streamlit Secrets must define:
-# - gcp_service_account: full JSON of a service account with Sheets API access
 # - sheets: a list of dicts like:
 #   [
 #     { "sheet_url": "https://docs.google.com/spreadsheets/d/1AbC.../edit",
@@ -50,14 +48,6 @@ COLUMN_ALIASES = {
     "late":        ["late", "is_late"],
 }
 
-SCOPE = [
-    "https://www.googleapis.com/auth/spreadsheets.readonly",
-    "https://www.googleapis.com/auth/drive.readonly",
-]
-
-# --------------------------
-# Helpers
-# --------------------------
 def _canon(col: str) -> Optional[str]:
     c = col.strip().lower()
     for k, aliases in COLUMN_ALIASES.items():
@@ -72,9 +62,8 @@ def _sheet_id_from(url_or_id: str) -> str:
 
 @st.cache_resource(show_spinner=False)
 def _client() -> gspread.Client:
-    info = st.secrets["gcp_service_account"]  # (JSON object pasted into Streamlit Secrets)
-    creds = Credentials.from_service_account_info(info, scopes=SCOPE)
-    return gspread.Client(auth=creds)
+    # Public (no-credentials) client: works only if sheets are shared "Anyone with the link: Viewer"
+    return gspread.Client(auth=None)
 
 @st.cache_data(show_spinner=True)
 def load_data() -> pd.DataFrame:
