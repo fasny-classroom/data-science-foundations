@@ -1,10 +1,4 @@
-# ---------------------------------------------------------
-#   Copyright (c) [2025] Nadege LEMPERIERE
-#   All rights reserved
-#   -------------------------------------------------------
-#   Classroom advancement reporting
-#   -------------------------------------------------------
-from .done import done_button
-from .config import set_webhook, get_webhook, __version__
+from .curl_backend import register_done_curl, submit_done
+from .ui import show_done_button, done_html
 
-__all__ = ["done_button", "set_webhook", "get_webhook", "__version__"]
+__all__ = ["register_done_curl", "submit_done", "show_done_button", "done_html"]
