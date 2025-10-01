@@ -1,217 +1,171 @@
 /***** CONFIG *****/
-// Four states: default is "none" (not yet), then root → plant → tree
-const ASSIGNMENTS = ["A1","A2","A3","A4","A5","A6","A7","A8"];
-const LEVELS = ["none","root","plant","tree"];                 // left→right on the slider
-const ORDER = LEVELS.reduce((m,v,i)=> (m[v]=i, m), {});
-const EMOJI = { none:"⚪", root:"🌱", plant:"🌿", tree:"🌳" };
+// Levels left→right (used by the student slider)
+const LEVELS = ["none","root","plant","tree"];
+const ORDER  = LEVELS.reduce((m,v,i)=> (m[v]=i, m), {});
+const EMOJI  = { none:"⚪", root:"🌱", plant:"🌿", tree:"🌳" };
 
-/***** SHEET HELPERS *****/
+// If you want to force a specific sheet name, set it here; otherwise uses the first sheet.
+const SHEET_NAME = ""; // e.g. "Progress"; leave "" to use the active first sheet.
+
+/***** UTIL *****/
 function _ss(){ return SpreadsheetApp.getActive(); }
-function _sheet(name){ return _ss().getSheetByName(name) || _ss().insertSheet(name); }
-
-function ensureHeaders(){
-  const shL = _sheet("Latest");
-  if (shL.getLastRow() === 0){
-    shL.appendRow(["student_id","name","email"].concat(ASSIGNMENTS));
+function _sheet(){
+  if (SHEET_NAME) {
+    const sh = _ss().getSheetByName(SHEET_NAME);
+    if (!sh) throw new Error("Sheet '"+SHEET_NAME+"' not found.");
+    return sh;
   }
-  const shR = _sheet("Responses");
-  if (shR.getLastRow() === 0){
-    shR.appendRow(["Timestamp","email","assignment","level","note"]);
+  const sheets = _ss().getSheets();
+  if (!sheets.length) throw new Error("No sheets found.");
+  return sheets[0];
+}
+function _readAll(){
+  const sh = _sheet();
+  const rng = sh.getDataRange();
+  const vals = rng.getValues();
+  if (!vals.length || !vals[0].length) throw new Error("Sheet is empty.");
+  return vals;
+}
+function _findEmailCol(header){
+  // Accept "mail" or "email" (case-insensitive, trimmed)
+  let idx = header.findIndex(h => String(h).trim().toLowerCase() === "mail");
+  if (idx === -1) idx = header.findIndex(h => String(h).trim().toLowerCase() === "email");
+  if (idx === -1) throw new Error("Header must contain 'mail' (or 'email') in column 1.");
+  return idx;
+}
+function _assignmentsFromHeader(header, emailCol){
+  const asgs = [];
+  for (let c=0; c<header.length; c++){
+    if (c === emailCol) continue;
+    const name = String(header[c]).trim();
+    if (name) asgs.push({name, col: c});
   }
+  if (!asgs.length) throw new Error("No assignment columns found after 'mail' header.");
+  return asgs;
+}
+function _getUserEmail(){
+  const e = (Session.getActiveUser().getEmail() || "").trim().toLowerCase();
+  if (!e) throw new Error("Not signed in (ensure deployment is 'Execute as user' and restricted to your domain).");
+  return e;
+}
+function _ensureStudentRow(email, header, emailCol){
+  const sh = _sheet();
+  const lastRow = sh.getLastRow();
+  if (lastRow < 1) throw new Error("Sheet has no header.");
+  const colA = sh.getRange(2, emailCol+1, Math.max(0, lastRow-1), 1).getValues(); // 2..N
+  for (let i=0; i<colA.length; i++){
+    const cell = String(colA[i][0]).trim().toLowerCase();
+    if (cell && cell === email) return 2 + i; // row index (1-based)
+  }
+  // Not found: append new row with defaults
+  const row = new Array(header.length).fill("");
+  row[emailCol] = email;
+  for (let c=0; c<header.length; c++){
+    if (c === emailCol) continue;
+    row[c] = "none";
+  }
+  sh.appendRow(row);
+  return sh.getLastRow();
 }
 
-function seedLatestFromRoster(){
-  const shR = _sheet("Roster");
-  const shL = _sheet("Latest");
-  ensureHeaders();
-
-  const rVals = shR.getDataRange().getValues();
-  if (!rVals.length) throw new Error("Roster is empty.");
-  const rHead = rVals.shift();
-  const iId = rHead.indexOf("student_id");
-  const iName = rHead.indexOf("name");
-  const iEmail = rHead.indexOf("email");
-  if (iId < 0 || iName < 0 || iEmail < 0){
-    throw new Error("Roster must have headers: student_id, name, email");
-  }
-
-  const lVals = shL.getDataRange().getValues();
-  const seen = new Set();
-  if (lVals.length > 1){
-    for (let i=1;i<lVals.length;i++){
-      const email = (lVals[i][2] || "").toString().trim().toLowerCase();
-      if (email) seen.add(email);
-    }
-  }
-
-  const toAppend = [];
-  rVals.forEach(r => {
-    const id = (r[iId]||"").toString().trim();
-    const nm = (r[iName]||"").toString().trim();
-    const em = (r[iEmail]||"").toString().trim().toLowerCase();
-    if (!id || !em) return;
-    if (seen.has(em)) return;
-    toAppend.push([id, nm, em].concat(new Array(ASSIGNMENTS.length).fill("none"))); // default none
-  });
-
-  if (toAppend.length){
-    shL.getRange(shL.getLastRow()+1, 1, toAppend.length, 3+ASSIGNMENTS.length).setValues(toAppend);
-  }
-  return {added: toAppend.length};
-}
-
-/***** OPEN MENU *****/
-function onOpen(){
-  SpreadsheetApp.getUi().createMenu("Progress Portal")
-    .addItem("Seed Latest from Roster", "seedLatestFromRoster")
-    .addItem("Open Dashboard", "openDashboard")
-    .addToUi();
-}
-function openDashboard(){
-  const url = ScriptApp.getService().getUrl();
-  SpreadsheetApp.getUi().showModalDialog(
-    HtmlService.createHtmlOutput(`<p style="font:14px system-ui">Open: <a target="_blank" href="${url}?page=dashboard">${url}?page=dashboard</a></p>`),
-    "Progress Portal"
-  );
-}
-
-/***** WEB APP ROUTER *****/
-
+/***** ROUTER *****/
 function doGet(e){
-  ensureHeaders();
-  const page = (e && e.parameter && e.parameter.page) || "student";
-  let tpl;
-  if (page === "student"){
-    tpl = HtmlService.createTemplateFromFile("student");
-  } else {
-    tpl = HtmlService.createTemplateFromFile("dashboard");
-  }
+  const page = (e && e.parameter && e.parameter.page) || "student"; // default to student
+  const tpl = HtmlService.createTemplateFromFile(page === "dashboard" ? "dashboard" : "student");
   return tpl.evaluate()
     .setTitle("Progress Portal")
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 function include(name){ return HtmlService.createHtmlOutputFromFile(name).getContent(); }
 
-/***** SERVER API *****/
-function _getLatestMap(){
-  const sh = _sheet("Latest");
-  const vals = sh.getDataRange().getValues();
-  if (vals.length < 2) return {header: vals[0] || [], rows: [], byEmail: {}};
-  const header = vals[0];
-  const rows = vals.slice(1);
-  const byEmail = {};
-  rows.forEach(r => {
-    const email = (r[2]||"").toString().trim().toLowerCase();
-    if (email) byEmail[email] = r;
-  });
-  return {header, rows, byEmail};
-}
-
-function whoAmI(){
-  const email = (Session.getActiveUser().getEmail() || "").toLowerCase();
-  const latest = _getLatestMap();
-  let name = "", student_id = "";
-  if (email && latest.byEmail[email]){
-    const r = latest.byEmail[email];
-    student_id = r[0] || ""; name = r[1] || "";
-  } else {
-    const shR = _sheet("Roster");
-    const rVals = shR.getDataRange().getValues();
-    const head = rVals.shift() || [];
-    const iId = head.indexOf("student_id");
-    const iName = head.indexOf("name");
-    const iEmail = head.indexOf("email");
-    for (const r of rVals){
-      if ((r[iEmail]||"").toString().toLowerCase() === email){
-        student_id = r[iId] || ""; name = r[iName] || ""; break;
-      }
-    }
-  }
-  return {email, name, student_id};
-}
-
+/***** API: student *****/
 function getStudentStatus(){
-  const me = whoAmI();
-  if (!me.email) throw new Error("Not signed in (domain-only).");
-  const latest = _getLatestMap();
-  const levels = {};
-  if (latest.byEmail[me.email]){
-    const row = latest.byEmail[me.email];
-    for (let j=0; j<ASSIGNMENTS.length; j++){
-      let v = (row[3+j] || "").toString().toLowerCase();
-      if (!LEVELS.includes(v)) v = "none";   // normalize blanks to none
-      levels[ASSIGNMENTS[j]] = v;
-    }
-  } else {
-    const shL = _sheet("Latest");
-    shL.appendRow([me.student_id || "", me.name || "", me.email].concat(new Array(ASSIGNMENTS.length).fill("none")));
-    ASSIGNMENTS.forEach(a => levels[a] = "none");
-  }
-  return { me, assignments: ASSIGNMENTS, levels, levelsOrder: LEVELS, emoji: EMOJI };
-}
-
-// Allow upgrades & downgrades; store exactly the chosen level (including "none")
-function setStudentLevel(assignment, level, note){
-  const me = whoAmI();
-  if (!me.email) throw new Error("Not signed in (domain-only).");
-  assignment = (assignment || "").toString().trim();
-  level = (level || "").toString().toLowerCase().trim();
-  note = (note || "").toString();
-
-  if (ASSIGNMENTS.indexOf(assignment) === -1) throw new Error("Invalid assignment.");
-  if (!ORDER.hasOwnProperty(level)) throw new Error("Invalid level.");
-
-  const shL = _sheet("Latest");
-  const vals = shL.getDataRange().getValues();
+  const vals = _readAll();
   const header = vals[0];
-  const col = header.indexOf(assignment);
-  if (col < 0) throw new Error("Sheet missing assignment column.");
+  const emailCol = _findEmailCol(header);
+  const email = _getUserEmail();
 
-  let rowIdx = -1;
-  for (let i=1; i<vals.length; i++){
-    if ((vals[i][2]||"").toString().toLowerCase() === me.email){ rowIdx = i+1; break; }
-  }
-  if (rowIdx === -1){
-    shL.appendRow([me.student_id || "", me.name || "", me.email].concat(new Array(ASSIGNMENTS.length).fill("none")));
-    rowIdx = shL.getLastRow();
-  }
+  // Build assignments list
+  const asgs = _assignmentsFromHeader(header, emailCol); // {name, col}
 
-  shL.getRange(rowIdx, col+1).setValue(level); // set exact
+  // Ensure row exists
+  const rowIdx = _ensureStudentRow(email, header, emailCol);
 
-  const shR = _sheet("Responses");
-  shR.appendRow([new Date(), me.email, assignment, level, note || ""]);
-  return {ok:true, level};
+  // Read current levels for this row
+  const sh = _sheet();
+  const rowVals = sh.getRange(rowIdx, 1, 1, header.length).getValues()[0];
+  const levels = {};
+  asgs.forEach(a => {
+    let v = String(rowVals[a.col] || "").trim().toLowerCase();
+    if (!LEVELS.includes(v)) v = "none"; // normalize
+    levels[a.name] = v;
+  });
+
+  return {
+    me: { email },
+    assignments: asgs.map(a => a.name),
+    levels,              // map name -> level
+    levelsOrder: LEVELS, // tell client the order
+    emoji: EMOJI
+  };
 }
 
-/***** DASHBOARD DATA *****/
+function setStudentLevel(assignment, level){
+  const vals = _readAll();
+  const header = vals[0];
+  const emailCol = _findEmailCol(header);
+  const asgs = _assignmentsFromHeader(header, emailCol);
+  const email = _getUserEmail();
+
+  if (!LEVELS.includes(String(level).toLowerCase())) throw new Error("Invalid level.");
+  const a = asgs.find(x => x.name === assignment);
+  if (!a) throw new Error("Unknown assignment: " + assignment);
+
+  const rowIdx = _ensureStudentRow(email, header, emailCol);
+
+  // Set the exact level (overwrites prior value)
+  const sh = _sheet();
+  sh.getRange(rowIdx, a.col + 1).setValue(String(level).toLowerCase());
+
+  return { ok: true, level: String(level).toLowerCase() };
+}
+
+/***** API: dashboard *****/
 function getDashboardData(){
-  const sh = _sheet("Latest");
-  const vals = sh.getDataRange().getValues();
+  const vals = _readAll();
+  const header = vals[0];
+  const emailCol = _findEmailCol(header);
+  const asgs = _assignmentsFromHeader(header, emailCol);
+
   const rows = [];
-  if (vals.length >= 2){
-    for (let i=1; i<vals.length; i++){
-      const r = vals[i];
-      rows.push({
-        id: r[0] || "", name: r[1] || "", email: (r[2]||"").toString(),
-        levels: ASSIGNMENTS.map((a,j)=> {
-          const v = (r[3+j]||"").toString().toLowerCase();
-          return LEVELS.includes(v) ? v : "none";
-        })
-      });
-    }
+  for (let r=1; r<vals.length; r++){
+    const email = String(vals[r][emailCol] || "").trim();
+    if (!email) continue;
+    const lvls = asgs.map(a => {
+      const v = String(vals[r][a.col] || "").trim().toLowerCase();
+      return LEVELS.includes(v) ? v : "none";
+    });
+    rows.push({ email, levels: lvls });
   }
 
-  // counts per assignment (include none)
+  // counts per assignment
   const counts = {};
-  ASSIGNMENTS.forEach(a => counts[a] = {none:0, root:0, plant:0, tree:0});
-  rows.forEach(rec => rec.levels.forEach((lvl, idx) => counts[ASSIGNMENTS[idx]][lvl]++));
+  asgs.forEach((a, idx) => {
+    counts[a.name] = { none:0, root:0, plant:0, tree:0 };
+    rows.forEach(rec => counts[a.name][rec.levels[idx]]++);
+  });
 
-  // progress per student: none=0, root=1, plant=2, tree=3
-  const maxPerA = LEVELS.length - 1; // 3
+  // per-student progress (% of tree=3)
   rows.forEach(rec => {
     const sum = rec.levels.reduce((s,l)=> s + (ORDER[l] || 0), 0);
-    rec.progress = Math.round(100 * sum / (ASSIGNMENTS.length * maxPerA));
+    rec.progress = Math.round(100 * sum / (asgs.length * (LEVELS.length - 1)));
   });
 
-  return {assignments: ASSIGNMENTS, levels: LEVELS, emoji: EMOJI, counts, rows};
+  return {
+    assignments: asgs.map(a => a.name),
+    levels: LEVELS,
+    emoji: EMOJI,
+    counts,
+    rows // {email, levels[by index], progress}
+  };
 }
