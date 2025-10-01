@@ -1,0 +1,206 @@
+<!doctype html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>My Progress</title>
+  <style>
+    :root{ --ink:#111827; --muted:#6b7280; --card:#ffffff; --bg:#f8fafc; --track:#e5e7eb; --track-active:#cbd5e1; }
+    body{ font:14px system-ui,-apple-system,Segoe UI,Roboto,Arial; color:var(--ink); background:var(--bg); margin:0; }
+    header{ padding:16px; background:var(--card); box-shadow:0 1px 3px rgba(0,0,0,.06); position:sticky; top:0; z-index:10; }
+    main{ padding:16px; max-width:900px; margin:auto; }
+    .who{ color:var(--muted); font-size:13px; }
+    .grid{ display:grid; grid-template-columns: repeat(auto-fit, minmax(260px,1fr)); gap:12px; }
+    .card{ background:var(--card); border-radius:12px; padding:12px; box-shadow:0 1px 2px rgba(0,0,0,.05); }
+    .row{ display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+    .muted{ color:var(--muted); font-size:12px; }
+
+    /* Slider stack: emoji sits ON the track; dots overlay on same plane */
+    .slider-wrap{ position:relative; }
+    .track{ position:relative; height:10px; border-radius:6px; background:var(--track); }
+    .slider{
+      position:absolute; inset:0;
+      -webkit-appearance:none; appearance:none;
+      background:transparent; outline:none; margin:0; width:100%; height:100%;
+    }
+    .slider::-webkit-slider-thumb{ -webkit-appearance:none; width:0; height:0; opacity:0; }
+    .slider::-moz-range-thumb{ width:0; height:0; opacity:0; border:0; }
+    .track-fill{ position:absolute; left:0; top:0; bottom:0; width:0%; background:var(--track-active); border-radius:6px; pointer-events:none; }
+
+    .thumb-emoji{
+      position:absolute; top:50%; transform:translate(-50%, -50%);
+      width:30px; height:30px; border-radius:50%;
+      background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.18);
+      display:flex; align-items:center; justify-content:center; font-size:18px;
+      z-index:2; pointer-events:none;
+    }
+
+    .marks-dots{ position:absolute; inset:0; display:block; z-index:1; }
+    .dot{
+      position:absolute; top:50%; transform:translate(-50%, -50%);
+      width:10px; height:10px; border-radius:50%; background:#9ca3af;
+      box-shadow:0 0 0 2px #fff; cursor:pointer;
+    }
+    .dot.active{ background:#111827; }
+    .legend{ display:flex; justify-content:space-between; margin-top:8px; font-size:12px; color:var(--muted); }
+  </style>
+</head>
+<body>
+  <header>
+    <div><strong>Student Progress</strong></div>
+    <div id="who" class="who"></div>
+  </header>
+  <main>
+    <p class="muted">Drag the emoji or click a dot to set your level. It saves automatically.</p>
+    <div id="grid" class="grid"></div>
+  </main>
+
+  <script>
+    // Four states; "none" is default
+    const LEVELS = ["none","root","plant","tree"];
+    const ORDER  = {none:0, root:1, plant:2, tree:3};
+    const EMOJI  = {none:"⚪", root:"🌱", plant:"🌿", tree:"🌳"};
+
+    const sleep = (ms)=> new Promise(r=>setTimeout(r, ms));
+    function debounce(fn, ms){
+      let t; return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn(...args), ms); };
+    }
+    function pctFromIndex(i){ return (i/(LEVELS.length-1))*100; }
+
+    function positionEmojiAndFill(wrap, idx){
+      const track = wrap.querySelector('.track');
+      const thumb = wrap.querySelector('.thumb-emoji');
+      const fill  = wrap.querySelector('.track-fill');
+      const rect  = track.getBoundingClientRect();
+      const p     = pctFromIndex(idx);
+      const left  = rect.left + (p/100) * rect.width;
+      const local = left - rect.left;
+      thumb.style.left = local + "px";
+      fill.style.width = p + "%";
+      wrap.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i===idx));
+    }
+
+    function renderCard(container, assignment, currentLevel){
+      let idx = (currentLevel in ORDER) ? ORDER[currentLevel] : 0;
+      let lastCommitted = idx;   // confirmed by server
+      let seq = 0;               // request version for this slider
+      let latestSeq = 0;
+
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `
+        <div class="row">
+          <div><strong>${assignment}</strong></div>
+          <div class="muted" id="cur-${assignment}">${EMOJI[currentLevel||"none"]} ${currentLevel||"not yet"}</div>
+        </div>
+        <div class="slider-wrap" id="wrap-${assignment}">
+          <div class="track">
+            <div class="track-fill"></div>
+            <input type="range" class="slider" min="0" max="3" step="1" value="${idx}" aria-label="${assignment} level">
+            <div class="marks-dots" aria-hidden="true">
+              <div class="dot"  style="left:0%"></div>
+              <div class="dot"  style="left:33.3333%"></div>
+              <div class="dot"  style="left:66.6666%"></div>
+              <div class="dot"  style="left:100%"></div>
+            </div>
+            <div class="thumb-emoji">${EMOJI[currentLevel||"none"]}</div>
+          </div>
+        </div>
+        <div class="legend">
+          <span>${EMOJI.none} not yet</span>
+          <span>${EMOJI.root} root</span>
+          <span>${EMOJI.plant} plant</span>
+          <span>${EMOJI.tree} tree</span>
+        </div>
+      `;
+      container.appendChild(card);
+
+      const wrap   = card.querySelector(`#wrap-${assignment}`);
+      const slider = wrap.querySelector('.slider');
+      const thumb  = wrap.querySelector('.thumb-emoji');
+      const curLbl = card.querySelector(`#cur-${assignment}`);
+
+      const applyVisual = (i)=>{
+        const level = LEVELS[i];
+        thumb.textContent = EMOJI[level];
+        curLbl.textContent = `${EMOJI[level]} ${level==="none"?"not yet":level}`;
+        positionEmojiAndFill(wrap, i);
+      };
+
+      // initial paint
+      requestAnimationFrame(()=> applyVisual(idx));
+      window.addEventListener('resize', ()=> applyVisual(Number(slider.value)));
+
+      // ---- SAVE LOGIC (debounced + versioned) ----
+      const saveDebounced = debounce((i)=>{
+        const mySeq = ++seq; latestSeq = mySeq;
+        const level = LEVELS[i];
+
+        // optimistic visuals already set by caller
+        google.script.run
+          .withSuccessHandler(res => {
+            if (mySeq !== latestSeq) return; // stale response: ignore
+            if (res && res.ok){
+              const confirmed = res.level || level;
+              lastCommitted = ORDER[confirmed] ?? i;
+              // align slider with server-confirmed value if different
+              if (Number(slider.value) !== lastCommitted){
+                slider.value = lastCommitted;
+                applyVisual(lastCommitted);
+              }
+            } else {
+              // revert on failure
+              slider.value = lastCommitted;
+              applyVisual(lastCommitted);
+              alert('Save failed; please try again.');
+            }
+          })
+          .withFailureHandler(err => {
+            if (mySeq !== latestSeq) return; // stale error: ignore
+            console.error(err);
+            slider.value = lastCommitted;
+            applyVisual(lastCommitted);
+            alert('Save failed; please try again.');
+          })
+          .setStudentLevel(assignment, level, "");
+      }, 250); // 250ms debounce is plenty for drag/drag/stop
+
+      // input: update visuals live; change: commit once
+      slider.addEventListener('input', ()=> {
+        const i = Number(slider.value);
+        applyVisual(i);
+      });
+      slider.addEventListener('change', ()=> {
+        const i = Number(slider.value);
+        applyVisual(i);
+        saveDebounced(i);
+      });
+
+      // dot clicks: set, show, commit once
+      wrap.querySelectorAll('.dot').forEach((dot, i)=>{
+        dot.addEventListener('click', ()=>{
+          slider.value = i;
+          applyVisual(i);
+          saveDebounced(i);
+        });
+      });
+    }
+
+    function draw(me, assignments, current){
+      document.getElementById("who").textContent = `${me.name || me.email} (${me.email})`;
+      const grid = document.getElementById("grid");
+      grid.innerHTML = "";
+      assignments.forEach(a => renderCard(grid, a, current[a] || "none"));
+    }
+
+    // Bootstrap
+    google.script.run.withSuccessHandler(({me, assignments, levels}) => {
+      draw(me, assignments, levels);
+    }).withFailureHandler(err => {
+      alert('Failed to load your status. Make sure you are logged in with your school account.');
+      console.error(err);
+    }).getStudentStatus();
+  </script>
+</body>
+</html>
