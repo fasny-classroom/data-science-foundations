@@ -1,48 +1,47 @@
 <!doctype html>
 <html>
 <head>
-  <base target="_top">
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <base target="_top"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>My Progress</title>
   <style>
     :root{ --ink:#111827; --muted:#6b7280; --card:#ffffff; --bg:#f8fafc; --track:#e5e7eb; --track-active:#cbd5e1; }
-    body{ font:14px system-ui,-apple-system,Segoe UI,Roboto,Arial; color:var(--ink); background:var(--bg); margin:0; }
-    header{ padding:16px; background:var(--card); box-shadow:0 1px 3px rgba(0,0,0,.06); position:sticky; top:0; z-index:10; }
-    main{ padding:16px; max-width:900px; margin:auto; }
-    .who{ color:var(--muted); font-size:13px; }
-    .grid{ display:grid; grid-template-columns: repeat(auto-fit, minmax(260px,1fr)); gap:12px; }
-    .card{ background:var(--card); border-radius:12px; padding:12px; box-shadow:0 1px 2px rgba(0,0,0,.05); }
-    .row{ display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
-    .muted{ color:var(--muted); font-size:12px; }
+    body{ font:14px system-ui,-apple-system,Segoe UI,Roboto,Arial; color:var(--ink); background:var(--bg); margin:0;}
+    header{ padding:16px; background:var(--card); box-shadow:0 1px 3px rgba(0,0,0,.06); position:sticky; top:0; z-index:10;}
+    main{ padding:16px; max-width:1100px; margin:auto;}
+    .who{ color:var(--muted); font-size:13px;}
+    .controls{ display:flex; gap:8px; flex-wrap:wrap; margin:10px 0 14px; }
+    .ctrl{ padding:6px 10px; border:1px solid #e5e7eb; border-radius:8px; background:#fff; }
+    .tabs{ display:flex; gap:8px; margin:12px 0; }
+    .tab{ padding:8px 12px; border:1px solid #e5e7eb; border-radius:999px; cursor:pointer; background:#fff; }
+    .tab.active{ background:#111827; color:#fff; border-color:#111827; }
+    .panel{ display:none; } .panel.active{ display:block; }
 
-    .slider-wrap{ position:relative; }
-    .track{ position:relative; height:10px; border-radius:6px; background:var(--track); }
-    .slider{
-      position:absolute; inset:0;
-      -webkit-appearance:none; appearance:none;
-      background:transparent; outline:none; margin:0; width:100%; height:100%;
-    }
-    .slider::-webkit-slider-thumb{ -webkit-appearance:none; width:0; height:0; opacity:0; }
-    .slider::-moz-range-thumb{ width:0; height:0; opacity:0; border:0; }
-    .track-fill{ position:absolute; left:0; top:0; bottom:0; width:0%; background:var(--track-active); border-radius:6px; pointer-events:none; }
+    .topic{ background:var(--card); border-radius:12px; box-shadow:0 1px 2px rgba(0,0,0,.05); margin-bottom:10px; overflow:hidden;}
+    .topic header{ display:flex; justify-content:space-between; align-items:center; cursor:pointer; padding:12px 14px; box-shadow:none; position:initial; }
+    .topic .content{ display:none; padding:0 14px 14px; } .topic.open .content{ display:block; }
 
-    .thumb-emoji{
-      position:absolute; top:50%; transform:translate(-50%, -50%);
-      width:30px; height:30px; border-radius:50%;
-      background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.18);
-      display:flex; align-items:center; justify-content:center; font-size:18px;
-      z-index:2; pointer-events:none;
-    }
+    .grid{ display:grid; grid-template-columns: repeat(auto-fit, minmax(300px,1fr)); gap:12px; }
+    .card{ background:var(--card); border-radius:12px; padding:12px; box-shadow:0 1px 2px rgba(0,0,0,.05);}
+    .row{ display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;}
+    .muted{ color:var(--muted); font-size:12px;}
+    .pill{ font-size:11px; border:1px solid #e5e7eb; border-radius:999px; padding:2px 6px; margin-left:6px;}
 
-    .marks-dots{ position:absolute; inset:0; display:block; z-index:1; }
-    .dot{
-      position:absolute; top:50%; transform:translate(-50%, -50%);
-      width:10px; height:10px; border-radius:50%; background:#9ca3af;
-      box-shadow:0 0 0 2px #fff; cursor:pointer;
-    }
-    .dot.active{ background:#111827; }
-    .legend{ display:flex; justify-content:space-between; margin-top:8px; font-size:12px; color:var(--muted); }
+    .slider-wrap{ position:relative;}
+    .track{ position:relative; height:10px; border-radius:6px; background:var(--track);}
+    .slider{ position:absolute; inset:0; -webkit-appearance:none; appearance:none; background:transparent; outline:none; margin:0; width:100%; height:100%;}
+    .slider::-webkit-slider-thumb{ -webkit-appearance:none; width:0; height:0; opacity:0;}
+    .slider::-moz-range-thumb{ width:0; height:0; opacity:0; border:0;}
+    .track-fill{ position:absolute; left:0; top:0; bottom:0; width:0%; background:var(--track-active); border-radius:6px; pointer-events:none;}
+    .thumb-emoji{ position:absolute; top:50%; transform:translate(-50%,-50%); width:30px; height:30px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.18); display:flex; align-items:center; justify-content:center; font-size:18px; z-index:2; pointer-events:none;}
+    .marks-dots{ position:absolute; inset:0; display:block; z-index:1;}
+    .dot{ position:absolute; top:50%; transform:translate(-50%,-50%); width:10px; height:10px; border-radius:50%; background:#9ca3af; box-shadow:0 0 0 2px #fff; cursor:pointer;}
+    .dot.active{ background:#111827;}
+    .legend{ display:flex; justify-content:space-between; margin-top:8px; font-size:12px; color:var(--muted);}
+
+    .chart-card{ background:var(--card); border-radius:12px; padding:12px; box-shadow:0 1px 2px rgba(0,0,0,.05); }
+    .table{ width:100%; border-collapse:collapse; margin-top:12px;}
+    .table th, .table td{ border:1px solid #e5e7eb; padding:6px 8px; font-size:12px; }
+    .empty{ color:var(--muted); font-style:italic; }
   </style>
 </head>
 <body>
@@ -50,147 +49,307 @@
     <div><strong>Student Progress</strong></div>
     <div id="who" class="who"></div>
   </header>
+
   <main>
-    <p class="muted">Drag the emoji or click a dot. It saves automatically.</p>
-    <div id="grid" class="grid"></div>
+    <div class="tabs">
+      <button class="tab active" data-tab="topics">Topics</button>
+      <button class="tab" data-tab="progress">Progress</button>
+    </div>
+
+    <section id="panel-topics" class="panel active">
+      <div class="controls">
+        <label class="ctrl"><input type="checkbox" id="fCW" checked> CW</label>
+        <label class="ctrl"><input type="checkbox" id="fHW" checked> HW</label>
+        <label class="ctrl">Level:
+          <select id="fLevel">
+            <option value="">All</option>
+            <option value="none">none</option>
+            <option value="root">root</option>
+            <option value="plant">plant</option>
+            <option value="tree">tree</option>
+          </select>
+        </label>
+        <label class="ctrl">Search <input id="fSearch" type="search" placeholder="activity or topic"></label>
+      </div>
+      <p class="muted">Set your current level for each activity. Saves automatically. Sliders are capped by each activity’s maximum level.</p>
+      <div id="accordion"></div>
+    </section>
+
+    <section id="panel-progress" class="panel">
+      <div class="chart-card">
+        <div><strong>Your progress by assignment order</strong></div>
+        <div id="chartArea" style="margin-top:10px"></div>
+        <div class="muted" style="margin-top:6px">Points are your current level per activity (y), plotted against assignment order (x). Line connects them in order.</div>
+      </div>
+    </section>
   </main>
 
   <script>
-    // 4 states; "none" default
-    const LEVELS = ["none","root","plant","tree"];
-    const ORDER  = {none:0, root:1, plant:2, tree:3};
-    const EMOJI  = {none:"⚪", root:"🌱", plant:"🌿", tree:"🌳"};
+    const LEVELS=["none","root","plant","tree"];
+    const ORDER={none:0,root:1,plant:2,tree:3};
+    const EMOJI={none:"⚪",root:"🌱",plant:"🌿",tree:"🌳"};
+    const pct=(i,maxIdx)=> (maxIdx? (100*Math.min(i,maxIdx)/maxIdx) : 0);
 
-    const debounce = (fn, ms)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; };
-    const pctFromIndex = (i)=> (i/(LEVELS.length-1))*100;
+    let RAW_TOPICS=null; // full payload from server (topics items include {mode, group, maxIdx, order})
+    let FILTERS={ CW:true, HW:true, level:"", search:"" };
 
-    function positionEmojiAndFill(wrap, idx){
-      const track = wrap.querySelector('.track');
-      const thumb = wrap.querySelector('.thumb-emoji');
-      const fill  = wrap.querySelector('.track-fill');
-      const rect  = track.getBoundingClientRect();
-      const p     = pctFromIndex(idx);
-      const left  = rect.left + (p/100) * rect.width;
-      const local = left - rect.left;
-      thumb.style.left = local + "px";
-      fill.style.width = p + "%";
-      wrap.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i===idx));
+    // Tabs
+    document.addEventListener('click', (e)=>{
+      const t=e.target.closest('.tab'); if(!t) return;
+      document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active', x===t));
+      document.querySelectorAll('.panel').forEach(p=> p.classList.remove('active'));
+      document.getElementById('panel-'+t.dataset.tab).classList.add('active');
+    });
+
+    // Call the given apply() when the slider's track becomes visible/resizes
+    function observeTrackResize(trackEl, onResize){
+      if (!('ResizeObserver' in window)) {
+        // fallback: re-run on next tick and on window resize
+        requestAnimationFrame(onResize);
+        window.addEventListener('resize', onResize);
+        return { disconnect(){ window.removeEventListener('resize', onResize); } };
+      }
+      const ro = new ResizeObserver(()=> onResize());
+      ro.observe(trackEl);
+      return ro;
     }
 
-    function renderCard(container, assignmentLabel, currentLevel){
-      // Everything scoped under `card` — no IDs derived from label.
-      let idx = (currentLevel in ORDER) ? ORDER[currentLevel] : 0;
-      let lastCommitted = idx;
-      let seq = 0, latestSeq = 0;
+    // Accordion (only one open)
+    function makeAccordion(topics){
+      const host=document.getElementById('accordion'); host.innerHTML='';
+      topics.forEach((t, idx)=>{
+        const sec=document.createElement('section'); sec.className='topic'+(idx===0?' open':'');
+        sec.innerHTML=`
+          <header><div><strong>${t.name}</strong></div><div></div></header>
+          <div class="content"><div class="grid"></div></div>`;
+        host.appendChild(sec);
+        sec.querySelector('header').onclick=()=>{
+          document.querySelectorAll('.topic').forEach(s=> s.classList.remove('open'));
+          sec.classList.add('open');
+          // reflow sliders in this section now that it's visible
+          sec.querySelectorAll('.slider').forEach(sl => {
+            const wrap = sl.closest('.slider-wrap');
+            const maxIdx = Number(sl.getAttribute('max')) || 0;
+            const i = Number(sl.value);
+            // same positioning function you already use:
+            (function applyLocal(){
+              const lvl=LEVELS[i];
+              wrap.querySelector('.thumb-emoji').textContent=EMOJI[lvl];
+              // pos(wrap, i, maxIdx) is defined below in renderCard scope;
+              // re-run local positioning safely:
+              const track=wrap.querySelector('.track');
+              const rect=track.getBoundingClientRect();
+              if (rect.width>0){
+                const p=(i/(maxIdx||1))*100;
+                wrap.querySelector('.thumb-emoji').style.left=(rect.width*p/100)+"px";
+                wrap.querySelector('.track-fill').style.width=p+"%";
+              }
+            }());
+          });
+        };
 
-      const card = document.createElement('div');
-      card.className = 'card';
-      card.innerHTML = `
+        const grid=sec.querySelector('.grid');
+        t.items.forEach(it => renderCard(grid, it));
+      });
+    }
+
+    // Filters apply on RAW_TOPICS → filtered copy
+    function applyFilters(){
+      if (!RAW_TOPICS) return;
+      const fMode = (m)=> (m==="CW" && FILTERS.CW) || (m==="HW" && FILTERS.HW);
+      const fLevel = (lvl)=> (!FILTERS.level || FILTERS.level===lvl);
+      const s = (FILTERS.search||"").toLowerCase();
+
+      const filtered = RAW_TOPICS.map(t=>{
+        const items = t.items.filter(it=>{
+          if (!fMode(it.mode)) return false;
+          if (!fLevel(it.level)) return false;
+          if (s && !(t.name.toLowerCase().includes(s) || it.activity.toLowerCase().includes(s))) return false;
+          return true;
+        });
+        return { name:t.name, items };
+      }).filter(t=> t.items.length>0);
+
+      makeAccordion(filtered);
+    }
+
+    function pos(wrap, idx, maxIdx){
+      const track=wrap.querySelector('.track'); const thumb=wrap.querySelector('.thumb-emoji'); const fill=wrap.querySelector('.track-fill');
+      const rect=track.getBoundingClientRect(); const p=(idx/(maxIdx||1))*100; const local=(p/100)*rect.width;
+      thumb.style.left=local+"px"; fill.style.width=p+"%";
+      wrap.querySelectorAll('.dot').forEach((d,i)=> d.classList.toggle('active', i===idx));
+    }
+    const debounce=(fn,ms)=>{let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms); };};
+
+    function renderCard(grid, item){ // {id, activity, mode: CW/HW, level, maxIdx, order}
+      let idx = (item.level in ORDER)? ORDER[item.level] : 0;
+      if (idx>item.maxIdx) idx=item.maxIdx;
+      let lastCommitted=idx, seq=0, latestSeq=0;
+
+      const card=document.createElement('div'); card.className='card';
+      const dots = Array.from({length:item.maxIdx+1}, (_,i)=> i===0?0:(100* i/(item.maxIdx)).toFixed(4)).map(v=>`<div class="dot" style="left:${v}%"></div>`).join('');
+      const legendLabels = LEVELS.slice(0,item.maxIdx+1);
+      card.innerHTML=`
         <div class="row">
-          <div><strong class="label"></strong></div>
+          <div><strong class="label"></strong><span class="pill">${item.mode}</span></div>
           <div class="muted cur"></div>
         </div>
         <div class="slider-wrap">
           <div class="track">
             <div class="track-fill"></div>
-            <input type="range" class="slider" min="0" max="3" step="1" value="${idx}" aria-label="level slider">
-            <div class="marks-dots" aria-hidden="true">
-              <div class="dot"  style="left:0%"></div>
-              <div class="dot"  style="left:33.3333%"></div>
-              <div class="dot"  style="left:66.6666%"></div>
-              <div class="dot"  style="left:100%"></div>
-            </div>
-            <div class="thumb-emoji">${EMOJI[currentLevel||"none"]}</div>
+            <input type="range" class="slider" min="0" max="${item.maxIdx}" step="1" value="${idx}">
+            <div class="marks-dots" aria-hidden="true">${dots}</div>
+            <div class="thumb-emoji">${EMOJI[item.level||"none"]}</div>
           </div>
         </div>
         <div class="legend">
-          <span>${EMOJI.none}</span>
-          <span>${EMOJI.root}</span>
-          <span>${EMOJI.plant}</span>
-          <span>${EMOJI.tree}</span>
+          ${legendLabels.map(l=>`<span>${l==="none"?"start":l}</span>`).join('')}
         </div>
       `;
-      container.appendChild(card);
+      grid.appendChild(card);
+      card.querySelector('.label').textContent=item.activity;
 
-      // Scoped element refs
-      card.querySelector('.label').textContent = assignmentLabel;
-      const wrap   = card.querySelector('.slider-wrap');
-      const slider = card.querySelector('.slider');
-      const thumb  = card.querySelector('.thumb-emoji');
-      const curLbl = card.querySelector('.cur');
+      const wrap=card.querySelector('.slider-wrap'), slider=card.querySelector('.slider'), thumb=card.querySelector('.thumb-emoji'), cur=card.querySelector('.cur');
+      const track = card.querySelector('.track');
+      const apply=(i)=>{ const lvl=LEVELS[i]; thumb.textContent=EMOJI[lvl]; cur.textContent=`${EMOJI[lvl]} ${lvl==="none"?"start":lvl}`; pos(wrap,i,item.maxIdx); };
+      const ro = observeTrackResize(track, () => apply(Number(slider.value)));
+      requestAnimationFrame(()=>apply(idx));
+      window.addEventListener('resize', ()=>apply(Number(slider.value)));
 
-      const applyVisual = (i)=>{
-        const level = LEVELS[i];
-        thumb.textContent = EMOJI[level];
-        curLbl.textContent = `${EMOJI[level]}`;
-        positionEmojiAndFill(wrap, i);
-      };
-
-      // initial paint
-      requestAnimationFrame(()=> applyVisual(idx));
-      window.addEventListener('resize', ()=> applyVisual(Number(slider.value)));
-
-      // single debounced save + versioning
-      const saveDebounced = debounce((i)=>{
-        const mySeq = ++seq; latestSeq = mySeq;
-        const level = LEVELS[i];
-        google.script.run
-          .withSuccessHandler(res => {
-            if (mySeq !== latestSeq) return;         // stale response
-            if (res && res.ok){
-              const confirmed = res.level || level;
-              lastCommitted = ORDER[confirmed] ?? i;
-              if (Number(slider.value) !== lastCommitted){
-                slider.value = lastCommitted;
-                applyVisual(lastCommitted);
-              }
-            } else {
-              slider.value = lastCommitted;           // revert
-              applyVisual(lastCommitted);
-              alert('Save failed; try again.');
-            }
-          })
-          .withFailureHandler(err => {
-            if (mySeq !== latestSeq) return;
-            console.error(err);
-            slider.value = lastCommitted;             // revert
-            applyVisual(lastCommitted);
-            alert('Save failed; try again.');
-          })
-          .setStudentLevel(assignmentLabel, level);   // send ORIGINAL label to server
+      const save=debounce((i)=>{
+        const mySeq=++seq; latestSeq=mySeq; let level=LEVELS[i];
+        google.script.run.withSuccessHandler(res=>{
+          if (mySeq!==latestSeq) return;
+          if (res && res.ok){
+            const confirmed=res.level||level; const ci=(confirmed in ORDER)? ORDER[confirmed]: i;
+            lastCommitted = Math.min(ci, item.maxIdx);
+            if (Number(slider.value)!==lastCommitted){ slider.value=lastCommitted; apply(lastCommitted); }
+            // refresh order chart and durations incrementally
+            refreshProgressPanels();
+          } else { slider.value=lastCommitted; apply(lastCommitted); alert('Save failed; try again.'); }
+        }).withFailureHandler(err=>{ if (mySeq!==latestSeq) return; console.error(err); slider.value=lastCommitted; apply(lastCommitted); alert('Save failed; try again.'); })
+        .setStudentLevel(item.id, level);
       }, 200);
 
-      // input updates visuals; change commits once
-      slider.addEventListener('input', ()=> { applyVisual(Number(slider.value)); });
-      slider.addEventListener('change', ()=> { const i = Number(slider.value); applyVisual(i); saveDebounced(i); });
+      slider.addEventListener('input', ()=> apply(Number(slider.value)));
+      slider.addEventListener('change', ()=> { let i=Number(slider.value); if (i>item.maxIdx) i=item.maxIdx; slider.value=i; apply(i); save(i); });
+      wrap.querySelectorAll('.dot').forEach((d,i)=> d.addEventListener('click', ()=>{ slider.value=i; apply(i); save(i); }));
+    }
 
-      // dots click: set + save
-      wrap.querySelectorAll('.dot').forEach((dot, i)=>{
-        dot.addEventListener('click', ()=>{
-          slider.value = i;
-          applyVisual(i);
-          saveDebounced(i);
+    function drawTopics(me, topics){
+      document.getElementById('who').textContent = me.email;
+      RAW_TOPICS = topics;
+      applyFilters();
+    }
+
+    // Progress chart (order-based)
+    function drawOrderChart(series){
+      const host=document.getElementById('chartArea'); host.innerHTML='';
+      if (!series || !series.length){
+        host.innerHTML = '<div class="empty">No data.</div>';
+        return;
+      }
+
+      // Sort by effective order; keep original fields (especially `level`)
+      const S = series.slice().sort((a,b)=> a.order - b.order || a.activity.localeCompare(b.activity));
+
+      const W=900, H=240, P=36;
+      const xMin = Math.min(...S.map(p=>p.order));
+      const xMax = Math.max(...S.map(p=>p.order));
+      const yMin = 0, yMax = 100;
+
+      const sx = x => P + (xMax-xMin ? ((x-xMin)/(xMax-xMin)) * (W-2*P) : 0);
+      const sy = y => H-P - ((y-yMin)/(yMax-yMin)) * (H-2*P);
+
+      const poly = S.map(p => `${sx(p.order)},${sy(p.pct)}`).join(' ');
+      const xTicks = [...new Set(S.map(p=>p.order))].sort((a,b)=>a-b);
+      const yTicks = [0,25,50,75,100];
+
+      const gridY  = yTicks.map(v=> `<line x1="${P}" y1="${sy(v)}" x2="${W-P}" y2="${sy(v)}" stroke="#e5e7eb"/>`).join('');
+      const labelsY= yTicks.map(v=> `<text x="${P-6}" y="${sy(v)+4}" text-anchor="end" font-size="10" fill="#6b7280">${v}%</text>`).join('');
+      const labelsX= xTicks.map(v=> `<text x="${sx(v)}" y="${H-8}" text-anchor="middle" font-size="10" fill="#6b7280">${v}</text>`).join('');
+
+      const EMOJI = { none:"⚪", root:"🌱", plant:"🌿", tree:"🌳" };
+      const points = S.map(p => {
+        const e = EMOJI[p.level] || "⚪";
+        return `<text x="${sx(p.order)}" y="${sy(p.pct)+4}" text-anchor="middle" font-size="14">${e}
+                  <title>${p.activity} [${p.mode}] — ${p.level} (${p.pct}%) @ order ${p.order}</title>
+                </text>`;
+      }).join('');
+
+      host.innerHTML = `
+        <svg viewBox="0 0 ${W} ${H}" width="100%" height="280" role="img" aria-label="Progress by assignment order">
+          <rect x="0" y="0" width="${W}" height="${H}" fill="#fff" rx="12" ry="12"></rect>
+          ${gridY}${labelsY}${labelsX}
+          <polyline fill="none" stroke="#374151" stroke-width="1.5" points="${poly}"></polyline>
+          ${points}
+        </svg>`;
+    }
+
+    // Durations table
+    function drawDurations(rows){
+      const host=document.getElementById('durationsArea'); host.innerHTML='';
+      if (!rows || !rows.length){ host.innerHTML='<div class="empty">No history yet.</div>'; return; }
+      const header = `
+        <tr>
+          <th>Order</th><th>Topic</th><th>Activity</th><th>Mode</th>
+          <th>Root date</th><th>Plant date</th><th>Tree date</th>
+          <th>Days root→plant</th><th>Days plant→tree</th>
+        </tr>`;
+      const body = rows.map(r=>`
+        <tr>
+          <td>${r.order}</td><td>${r.topic}</td><td>${r.activity}</td><td>${r.mode}</td>
+          <td>${r.root||""}</td><td>${r.plant||""}</td><td>${r.tree||""}</td>
+          <td>${r.d_root_plant==null?"—":r.d_root_plant}</td>
+          <td>${r.d_plant_tree==null?"—":r.d_plant_tree}</td>
+        </tr>`).join('');
+      host.innerHTML = `<table class="table">${header}${body}</table>`;
+    }
+
+    function refreshProgressPanels(){
+      google.script.run.withSuccessHandler(drawOrderChart).withFailureHandler(console.error).getStudentOrderSeries();
+    }
+
+    function ensureLoginOrExplain(err){
+      const msg = (err && (err.message || err.toString())) || "";
+      if (msg.indexOf("__NO_IDENTITY__") !== -1) {
+        window.top.location.href = "https://accounts.google.com/AccountChooser?continue=" + encodeURIComponent(window.location.href);
+        return;
+      }
+      alert('Failed to load. Make sure you are logged into your school account.');
+    }
+
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(()=> {
+        // after fonts settle, re-apply visible sliders and redraw chart
+        document.querySelectorAll('.slider').forEach(sl=>{
+          const wrap=sl.closest('.slider-wrap');
+          const i=Number(sl.value);
+          const maxIdx=Number(sl.getAttribute('max'))||0;
+          const track=wrap.querySelector('.track');
+          const rect=track.getBoundingClientRect();
+          if (rect.width>0){
+            const p=(i/(maxIdx||1))*100;
+            wrap.querySelector('.thumb-emoji').style.left=(rect.width*p/100)+"px";
+            wrap.querySelector('.track-fill').style.width=p+"%";
+          }
         });
+        // reload series to ensure emoji positions are perfect
+        refreshProgressPanels();
       });
     }
 
-    function draw(me, assignments, currentMap){
-      document.getElementById("who").textContent = me.email;
-      const grid = document.getElementById("grid");
-      grid.innerHTML = "";
-      assignments.forEach(label => {
-        const cur = (currentMap && Object.prototype.hasOwnProperty.call(currentMap, label)) ? currentMap[label] : "none";
-        renderCard(grid, label, cur);
-      });
-    }
+    // Wire filters
+    document.addEventListener('change', (e)=>{
+      if (e.target.id==="fCW"){ FILTERS.CW = e.target.checked; applyFilters(); }
+      if (e.target.id==="fHW"){ FILTERS.HW = e.target.checked; applyFilters(); }
+      if (e.target.id==="fLevel"){ FILTERS.level = e.target.value; applyFilters(); }
+    });
+    document.getElementById('fSearch').addEventListener('input', (e)=>{ FILTERS.search = e.target.value; applyFilters(); });
 
-    // Bootstrap from server
-    google.script.run.withSuccessHandler(({me, assignments, levels}) => {
-      draw(me, assignments, levels);
-    }).withFailureHandler(err => {
-      alert('Failed to load your status. Ensure you are logged in with your school account.');
-      console.error(err);
-    }).getStudentStatus();
+    // Load
+    google.script.run.withSuccessHandler(({me, topics})=>{ drawTopics(me, topics); }).withFailureHandler(ensureLoginOrExplain).getStudentStatus();
+    refreshProgressPanels();
   </script>
 </body>
 </html>
